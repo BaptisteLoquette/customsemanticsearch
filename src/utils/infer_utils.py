@@ -35,7 +35,7 @@ def generate_batch_queries(batch:Dict[str, Tensor], model:T5ForConditionalGenera
 
     return generated_queries
 
-def generate_single_query(document:str, model:T5ForConditionalGeneration, tokenizer:T5Tokenizer, device, n_queries=3, positive=True) -> List[Tensor]:
+def generate_single_query(document:str, model:T5ForConditionalGeneration, tokenizer:T5Tokenizer, device, n_queries=3, positive=True, greedy=False) -> List[Tensor]:
     """Generate n_queries queries from a single document
     Inputs :
         - document : the document's text
@@ -46,19 +46,28 @@ def generate_single_query(document:str, model:T5ForConditionalGeneration, tokeni
     Outputs :
         - gen_queries : the list of generated queries
     """
+    model.eval()
     if positive:
-        tokenized   =   tokenizer.encode_plus(f"generate_positive_query: {document}", max_length=512, padding=True, return_tensors="pt")
+        tokenized   =   tokenizer.encode_plus(f"generate_positive_query: {document}", max_length=512, truncation=True, padding='max_length', return_tensors="pt")
     else:
-        tokenized   =   tokenizer.encode_plus(f"generate_negative_query: {document}", max_length=512, padding=True, return_tensors="pt")
+        tokenized   =   tokenizer.encode_plus(f"generate_negative_query: {document}", max_length=512, truncation=True, padding='max_length', return_tensors="pt")
     input_ids, attn_mask    =   tokenized["input_ids"].to(device), tokenized["attention_mask"].to(device)
-    gen_sequences   =   model.generate(
-        input_ids=input_ids,
-        attention_mask=attn_mask,
-        do_sample=True,
-        max_length=96,
-        top_p=0.95,
-        num_return_sequences=n_queries
-    )
+
+    if greedy:
+        gen_sequences   =   model.generate(
+            input_ids=input_ids,
+            attention_mask=attn_mask,
+            max_length=96
+        )
+    else:
+        gen_sequences   =   model.generate(
+            input_ids=input_ids,
+            attention_mask=attn_mask,
+            do_sample=True,
+            max_length=96,
+            top_p=0.95, # nucleus sampling to encourage variety in the generated queries
+            num_return_sequences=n_queries
+        )
 
     gen_queries =   tokenizer.batch_decode(gen_sequences, skip_special_tokens=True, clean_up_tokenization_spaces=True)
 
