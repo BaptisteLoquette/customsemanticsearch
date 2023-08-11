@@ -3,12 +3,12 @@ Generates a Pseudo-Labeled dataset of (queries, document) pairs from cc_news dat
 """
 import argparse
 from transformers import T5ForConditionalGeneration, T5Tokenizer
-from src.utils.synthetic_data_utils import write_to_csv_query_dset
+from src.utils.synthetic_data_utils import write_to_csv_query_dset_t5
 import torch
 
 parser  =   argparse.ArgumentParser(
-    prog="generate_query_dataset_cc_news",
-    description="Generate a queries dataset on cc_news dataset"
+    prog="generate_query_dataset_csv",
+    description="Generate a queries dataset on any csv dataset"
 )
 parser.add_argument('csv_path', help="Input path of the CSV dataset, must contain a columns 'text' where ", type=str)
 parser.add_argument('path_out', help="Output path to save the CSV generated dataset", type=str)
@@ -30,4 +30,4 @@ if "__main__" == __name__:
     device      =   torch.device('cuda' if torch.cuda.is_available() else "cpu")
     model       =   model.to(device)
 
-    write_to_csv_query_dset(csv_path, path_out, model, tokenizer, device, positive_and_negative=positive_and_negatives)    # Generate and write to csv
+    write_to_csv_query_dset_t5(csv_path, path_out, model, tokenizer, device, positive_and_negative=positive_and_negatives)    # Generate and write to csv
