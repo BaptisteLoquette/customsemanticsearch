@@ -11,7 +11,7 @@ from transformers import (
     T5ForConditionalGeneration,
     T5Tokenizer,
 )
-from datasets import load_from_disk
+from datasets import load_from_disk, concatenate_datasets
 from src.utils.infer_utils import generate_batch_queries
 from src.utils.train_utils import compute_rouge_score
 
@@ -19,7 +19,7 @@ parser  =   argparse.ArgumentParser(
     prog="train_t5_genQ",
     description="Train T5-small to generate synthetic Queries from documents"
 )
-parser.add_argument('dset_path', help="Path of the dataset", type=str)
+parser.add_argument('dset_path', help="Path of the dataset with positive and negative", type=str)
 parser.add_argument('path_out', help="Output dir to save the model & tokenizer", type=str)
 parser.add_argument('--batch_size', help="Batch Size for training", type=int, default=4, required=False)
 parser.add_argument('--n_epochs', help="Number of epochs to train the model for", type=int, default=1, required=False)
@@ -27,7 +27,6 @@ parser.add_argument('--val_prop', help="Proportion of the validation dataset", t
 parser.add_argument('--pretrained_model_path', help="Path to pretrained T5's states to initialize the model with", type=str, default="t5-small", required=False)
 parser.add_argument('--tokenizer_path', help="Path to model's tokenizer", type=str, default="t5-small", required=False)
 parser.add_argument('--pos_and_neg', help="True if the user wants to train T5 on positive queries as well as hard negative queries generation", type=bool, default=False)
-
 
 class T5GenQ_FineTuner(pl.LightningModule):
     """Pytorch Lightning T5 Fine Tuner"""
@@ -104,8 +103,13 @@ if "__main__" == __name__:
     tokenizer   =   T5Tokenizer.from_pretrained(pretrained_model_path)  # Load Pretrained model
     model       =   T5ForConditionalGeneration.from_pretrained(tokenizer_path)   # Load model's Tokenizer
 
-    dset        =   load_from_disk(dset_path).with_format('torch')  # Load Preprocessed Dataset
-    dset        =   dset.train_test_split(test_size=val_prop)            # Split dataset
+    dset        =   load_from_disk(os.path.join(dset_path, "positive"))  # Load Preprocessed Dataset
+    if pos_and_neg: # Loads positive and negative datasets
+        neg_dset    =   load_from_disk(os.path.join(dset_path, "negative"))
+        dset        =   concatenate_datasets([dset, neg_dset])
+        dset        =   dset.shuffle()  # Shuffle the pos and neg dataset
+        dset        =   dset.with_format('torch')
+    dset        =   dset.train_test_split(test_size=val_prop)   # Split dataset
 
     torch.cuda.empty_cache()
     finetune_model  =   T5GenQ_FineTuner(batch_size, model, tokenizer)
