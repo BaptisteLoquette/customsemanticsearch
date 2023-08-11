@@ -108,8 +108,7 @@ if "__main__" == __name__:
         neg_dset    =   load_from_disk(os.path.join(dset_path, "negative"))
         dset        =   concatenate_datasets([dset, neg_dset])
         dset        =   dset.shuffle()  # Shuffle the pos and neg dataset
-        dset        =   dset.with_format('torch')
-    dset        =   dset.train_test_split(test_size=val_prop)   # Split dataset
+    dset        =   dset.train_test_split(test_size=val_prop).with_format('torch')   # Split dataset
 
     torch.cuda.empty_cache()
     finetune_model  =   T5GenQ_FineTuner(batch_size, model, tokenizer)
