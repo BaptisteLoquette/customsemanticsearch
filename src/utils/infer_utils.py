@@ -2,12 +2,12 @@
 Inferences utility functions
 """
 
-from typing import Dict
+from typing import Dict, List
 from torch import Tensor
 import torch
 from transformers import T5ForConditionalGeneration, T5Tokenizer
 
-def generate_batch_queries(batch:Dict[str, Tensor], model:T5ForConditionalGeneration, tokenizer:T5Tokenizer) -> list:
+def generate_batch_queries(batch:Dict[str, Tensor], model:T5ForConditionalGeneration, tokenizer:T5Tokenizer) -> List[Tensor]:
     """
     Generates queries from batch.
 
@@ -35,7 +35,7 @@ def generate_batch_queries(batch:Dict[str, Tensor], model:T5ForConditionalGenera
 
     return generated_queries
 
-def generate_single_query(document:str, model:T5ForConditionalGeneration, tokenizer:T5Tokenizer, device, n_queries=3, positive=True) -> list:
+def generate_single_query(document:str, model:T5ForConditionalGeneration, tokenizer:T5Tokenizer, device, n_queries=3, positive=True) -> List[Tensor]:
     """Generate n_queries queries from a single document
     Inputs :
         - document : the document's text

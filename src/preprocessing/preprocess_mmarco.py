@@ -45,5 +45,5 @@ if "__main__" == __name__:
     negative_dset   =   negative_dset.shuffle()
 
     # Save Datasets
-    positive_dset.save_to_disk(os.path.join(output_dir, "positive"))
-    negative_dset.save_to_disk(os.path.join(output_dir, "negative"))
+    positive_dset.save_to_disk(os.path.join(output_dir, "positive_queries_dset"))
+    negative_dset.save_to_disk(os.path.join(output_dir, "negative_queries_dset"))

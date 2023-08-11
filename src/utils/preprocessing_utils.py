@@ -2,11 +2,12 @@
 Utility functions for Preprocessing
 """
 
-import copy
 from typing import Dict
+from torch import Tensor
+import copy
 from transformers import T5Tokenizer
 
-def clean_and_format(sample:Dict[str]):
+def clean_and_format(sample:Dict[str, str]) -> Dict[str, str]:
     """Convert each column to ASCII and modify the string by adding a prefix to each column"""
     sample['query']     =   f"{sample['query'].encode('ascii', 'ignore').decode('ascii')}"
     sample['positive']  =   f"generate_positive_query: {sample['positive'].encode('ascii', 'ignore').decode('ascii')}"
@@ -14,7 +15,7 @@ def clean_and_format(sample:Dict[str]):
     
     return sample
 
-def tokenize_dset_query_gen(sample:Dict[str], tokenizer:T5Tokenizer):
+def tokenize_dset_query_gen(sample:Dict[str, str], tokenizer:T5Tokenizer) -> Dict[str, Tensor]:
     """Tokenizes Dataset using T5-small tokenizer (SentencePiece)"""
     source  =   tokenizer.encode_plus(sample['document'], max_length=512,
                                     truncation=True, padding='max_length',
