@@ -38,13 +38,16 @@ def write_to_csv_query_dset_t5(csv_path:str, path_out:str, model:T5ForConditiona
 
     for sample in tqdm(df['text']):
         doc             =   re.sub("\n", " ", sample)   # Format text
+        greedy_pos_q    =   generate_single_query(doc, model, tokenizer, device, positive=True, greedy=True)
         pos_gen_queries =   generate_single_query(doc, model, tokenizer, device, positive=True)
-        
+        writer.writerow([greedy_pos_q] + [doc] + [1])
         for q in pos_gen_queries:
             writer.writerow([q] + [doc] + [1])  # 1 to indicate that the generated query is positive
 
         if positive_and_negative:
+            greedy_neg_q    =   generate_single_query(doc, model, tokenizer, device, positive=False, greedy=True)
             neg_gen_queries =   generate_single_query(doc, model, tokenizer, device, positive=False)
+            writer.writerow([greedy_neg_q] + [doc] + [1])
             for q in neg_gen_queries:
                 writer.writerow([q] + [doc] + [0])  # 0 to indicate that the generated query is negative
 
