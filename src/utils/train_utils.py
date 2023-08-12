@@ -46,8 +46,11 @@ def compute_rouge_score(test_path:str, model:T5ForConditionalGeneration, tokeniz
     dset    =   pd.read_csv(test_path)
     gt_q    =   []
     gen_q   =   []
-    for doc, gt_query in tqdm(zip(dset['positive'], dset['query'])):
-        gen_q.extend(generate_single_query(re.sub("\n", " ", doc), model, tokenizer, positive=positive, device=device, greedy=True))
+    for doc_pos, doc_neg, gt_query in tqdm(zip(dset['positive'], dset['query'])):
+        if positive:
+            gen_q.extend(generate_single_query(re.sub("\n", " ", doc_pos), model, tokenizer, positive=positive, device=device, greedy=True))
+        else:
+            gen_q.extend(generate_single_query(re.sub("\n", " ", doc_neg), model, tokenizer, positive=positive, device=device, greedy=True))
         gt_q.append(gt_query)
     rouge_score =   rouge_metric.compute(predictions=gen_q,references=gt_q)
         
