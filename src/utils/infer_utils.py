@@ -48,9 +48,9 @@ def generate_single_query(document:str, model:T5ForConditionalGeneration, tokeni
     """
     model.eval()
     if positive:
-        tokenized   =   tokenizer.encode_plus(f"generate_positive_query: {document}", max_length=512, truncation=True, padding='max_length', return_tensors="pt")
+        tokenized   =   tokenizer.encode_plus(f"generate_positive_query: {document.encode('ascii', 'ignore').decode('ascii')}", max_length=512, truncation=True, padding='max_length', return_tensors="pt")
     else:
-        tokenized   =   tokenizer.encode_plus(f"generate_negative_query: {document}", max_length=512, truncation=True, padding='max_length', return_tensors="pt")
+        tokenized   =   tokenizer.encode_plus(f"generate_negative_query: {document.encode('ascii', 'ignore').decode('ascii')}", max_length=512, truncation=True, padding='max_length', return_tensors="pt")
     input_ids, attn_mask    =   tokenized["input_ids"].to(device), tokenized["attention_mask"].to(device)
 
     if greedy:

@@ -13,7 +13,7 @@ from transformers import (
 )
 from datasets import load_from_disk, concatenate_datasets
 from src.utils.infer_utils import generate_batch_queries
-from src.utils.train_utils import compute_rouge_score
+from src.utils.train_utils import compute_rouge_score_train
 
 parser  =   argparse.ArgumentParser(
     prog="train_t5_genQ",
