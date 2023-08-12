@@ -9,7 +9,7 @@ from transformers import T5ForConditionalGeneration, T5Tokenizer
 
 def generate_batch_queries(batch:Dict[str, Tensor], model:T5ForConditionalGeneration, tokenizer:T5Tokenizer) -> List[Tensor]:
     """
-    Generates queries from batch.
+    Generates queries from batch of source_ids and attention_mask
 
     Inputs :
         - batch : tokenized batch of input documents
@@ -31,7 +31,7 @@ def generate_batch_queries(batch:Dict[str, Tensor], model:T5ForConditionalGenera
             ).squeeze()
 
             gen_query   =   tokenizer.decode(out, skip_special_tokens=True, clean_up_tokenization_spaces=True)
-            generated_queries.append(gen_query.strip('query: '))
+            generated_queries.append(gen_query)
 
     return generated_queries
 

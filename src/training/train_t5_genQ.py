@@ -13,7 +13,7 @@ from transformers import (
 )
 from datasets import load_from_disk, concatenate_datasets
 from src.utils.infer_utils import generate_batch_queries
-from src.utils.train_utils import compute_rouge_score_train
+from evaluate import load
 
 parser  =   argparse.ArgumentParser(
     prog="train_t5_genQ",
@@ -32,9 +32,16 @@ class T5GenQ_FineTuner(pl.LightningModule):
     """Pytorch Lightning T5 Fine Tuner"""
     def __init__(self, batch_size, model, tokenizer):
         super(T5GenQ_FineTuner, self).__init__()
-        self.bs         =   batch_size
-        self.model      =   model
-        self.tokenizer  =   tokenizer
+        self.bs             =   batch_size
+        self.model          =   model
+        self.tokenizer      =   tokenizer
+        self.rouge_metric   =   load('rouge')
+    
+    def ids_to_clean_text(self, generated_ids):
+        gen_text = self.tokenizer.batch_decode(
+            generated_ids.squeeze(), skip_special_tokens=True, clean_up_tokenization_spaces=True
+        )
+        return gen_text
 
     def forward(self, input_ids, attention_mask=None, decoder_inputs_ids=None, decoder_attn_mask=None, labels=None):
         outputs =   self.model(
@@ -67,8 +74,10 @@ class T5GenQ_FineTuner(pl.LightningModule):
             decoder_attn_mask=batch['target_attention_mask'],
             labels=batch['labels']
         )
-        generated_Q =   generate_batch_queries(batch, model, tokenizer) # Generates queries and decode target input ids in order to compute ROUGE scores
-        rouge_score =   compute_rouge_score(batch['target_ids'], generated_Q, tokenizer) # Computes ROUGE scores
+        generated_Q     =   generate_batch_queries(batch, model, tokenizer) # Generates queries and decode target input ids in order to compute ROUGE scores
+        ground_truth    =   self.ids_to_clean_text(batch['target_ids'])
+        rouge_score     =   self.rouge_metric.compute(predictions=generated_Q,
+                                         references=ground_truth)
 
         loss    =   outputs[0]
         self.log('val_loss', loss, prog_bar=True, on_epoch=True)
@@ -84,6 +93,7 @@ class T5GenQ_FineTuner(pl.LightningModule):
     
     def configure_optimizers(self):
         optimizer   =   AdamW(self.parameters(), lr=3e-4, eps=1e-8)
+        self.optim  =   optimizer
         return optimizer
 
 
