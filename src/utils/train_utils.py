@@ -43,7 +43,7 @@ def compute_rouge_score(test_path:str, model:T5ForConditionalGeneration, tokeniz
     Ouputs :
         rouge_score : the ROUGE's scores
     """
-    dset    =   pd.read_csv(test_path, sep="\t")
+    dset    =   pd.read_csv(test_path)
     gt_q    =   []
     gen_q   =   []
     for doc, gt_query in tqdm(zip(dset['positive'], dset['query'])):
