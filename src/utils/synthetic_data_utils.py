@@ -18,7 +18,7 @@ from openai.error import InvalidRequestError, Timeout
 
 from src.utils.infer_utils import generate_single_query
 
-def write_to_csv_query_dset_t5(csv_path:str, path_out:str, model:T5ForConditionalGeneration, tokenizer:T5Tokenizer, device, positive_and_negative=False) -> None:
+def write_to_csv_query_dset_t5(csv_path:str, path_out:str, model:T5ForConditionalGeneration, tokenizer:T5Tokenizer, device, positive_and_negative=False, n_queries=3) -> None:
     """Writes the (generated queries, document) pairs into a csv
     Inputs :
         - csv_path : the path of the csv dataset you want to annotate (must contain a column "text")
@@ -29,7 +29,7 @@ def write_to_csv_query_dset_t5(csv_path:str, path_out:str, model:T5ForConditiona
         - positive_and_negative : True if the user wants to generative positive queries as well as hard negative queries for the retriever
     """
 
-    df  =   pd.read_csv(csv_path)   # Load dataset
+    df  =   pd.read_csv(csv_path, sep="\t")   # Load dataset
 
     # Init CSV file
     f       =   open(path_out, 'w')
@@ -39,15 +39,16 @@ def write_to_csv_query_dset_t5(csv_path:str, path_out:str, model:T5ForConditiona
     for sample in tqdm(df['text']):
         doc             =   re.sub("\n", " ", sample)   # Format text
         greedy_pos_q    =   generate_single_query(doc, model, tokenizer, device, positive=True, greedy=True)
-        pos_gen_queries =   generate_single_query(doc, model, tokenizer, device, positive=True)
-        writer.writerow([greedy_pos_q] + [doc] + [1])
+        pos_gen_queries =   generate_single_query(doc, model, tokenizer, device, positive=True, n_queries=n_queries)
+        ## Generating using a mixture of nucleus sampling and greedy decoding
+        writer.writerow([greedy_pos_q[0]] + [doc] + [1])
         for q in pos_gen_queries:
             writer.writerow([q] + [doc] + [1])  # 1 to indicate that the generated query is positive
 
         if positive_and_negative:
             greedy_neg_q    =   generate_single_query(doc, model, tokenizer, device, positive=False, greedy=True)
-            neg_gen_queries =   generate_single_query(doc, model, tokenizer, device, positive=False)
-            writer.writerow([greedy_neg_q] + [doc] + [1])
+            neg_gen_queries =   generate_single_query(doc, model, tokenizer, device, positive=False, n_queries=n_queries)
+            writer.writerow([greedy_neg_q[0]] + [doc] + [0])
             for q in neg_gen_queries:
                 writer.writerow([q] + [doc] + [0])  # 0 to indicate that the generated query is negative
 
