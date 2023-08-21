@@ -29,16 +29,18 @@ parser.add_argument('--val_prop', help="Proportion of the validation dataset", t
 parser.add_argument('--pretrained_model_path', help="Path to pretrained T5's states to initialize the model with", type=str, default="t5-small", required=False)
 parser.add_argument('--tokenizer_path', help="Path to model's tokenizer", type=str, default="t5-small", required=False)
 parser.add_argument('--pos_and_neg', help="True if the user wants to train T5 on positive queries as well as hard negative queries generation", type=bool, default=False)
+parser.add_argument('-weight_decay', type=float, default=0.01)
 
 class T5GenQ_FineTuner(pl.LightningModule):
     """Pytorch Lightning T5 Fine Tuner"""
-    def __init__(self, batch_size, model, tokenizer, warmup_prop=0.1):
+    def __init__(self, batch_size, model, tokenizer, warmup_prop=0.1, weight_decay=0.01):
         super(T5GenQ_FineTuner, self).__init__()
         self.bs             =   batch_size
         self.model          =   model
         self.tokenizer      =   tokenizer
         self.rouge_metric   =   load('rouge')
         self.warmup_prop    =   warmup_prop
+        self.weight_decay   =   weight_decay
         self.train_loader   =   DataLoader(dset['train'], batch_size=self.bs, num_workers=4)
         self.val_loader     =   DataLoader(dset['test'], batch_size=self.bs, num_workers=4)
     
@@ -98,7 +100,13 @@ class T5GenQ_FineTuner(pl.LightningModule):
         return self.val_loader
     
     def configure_optimizers(self):
-        optimizer   =   AdamW(self.parameters(), lr=3e-4, eps=1e-8)
+        no_decay    =   ['bias', 'LayerNorm.weight']
+        model       =   self.model
+        optimizer_grouped_parameters = [
+            {'params': [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)], 'weight_decay': self.weight_decay},
+            {'params': [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+        ]
+        optimizer   =   AdamW(optimizer_grouped_parameters, lr=3e-4, eps=1e-8)
         scheduler   =   get_linear_schedule_with_warmup(optimizer,
                                                                 num_warmup_steps=int(self.warmup_prop*len(self.train_loader)),
                                                                 num_training_steps=len(self.train_loader))  # Init LR with warmup scheduler
@@ -122,6 +130,7 @@ if "__main__" == __name__:
     path_out                =   args.path_out
     pos_and_neg             =   args.pos_and_neg
     wandb_project           =   args.wandb_project
+    weight_decay            =   args.weight_decay
 
     wandb_logger    =   WandbLogger(project=wandb_project)
 
@@ -138,7 +147,7 @@ if "__main__" == __name__:
     dset        =   dset.train_test_split(test_size=val_prop).with_format('torch')   # Split dataset
 
     torch.cuda.empty_cache()
-    finetune_model  =   T5GenQ_FineTuner(batch_size, model, tokenizer)
+    finetune_model  =   T5GenQ_FineTuner(batch_size, model, tokenizer, weight_decay=weight_decay)
     trainer         =   pl.Trainer(max_epochs=n_epochs, devices=1, accelerator=device, logger=wandb_logger)
     trainer.fit(finetune_model)
 
