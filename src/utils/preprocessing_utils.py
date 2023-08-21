@@ -28,7 +28,7 @@ def tokenize_dset_query_gen(sample:Dict[str, str], tokenizer:T5Tokenizer) -> Dic
     sample['source_attention_mask'] =   source['attention_mask']
     sample['target_ids']            =   target['input_ids']
     sample['target_attention_mask'] =   target['attention_mask']
-    labels  =   copy.deepcopy(target['input_ids'])
+    labels              =   copy.deepcopy(target['input_ids'])
     labels[labels==0]   =   -100    # Replace <pad>'s idx (0) with -100 in order for t5 to not compute the loss on the paddings
     sample['labels']    =   labels
 

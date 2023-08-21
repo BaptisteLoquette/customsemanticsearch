@@ -14,13 +14,15 @@ parser  =   argparse.ArgumentParser(
     description="Preprocess unicamp-dl/mmarco dataset for Query Generation"
 )
 parser.add_argument('out', help="Output dir of the preprocessed files", type=str)
+parser.add_argument('dset_path', help="Path of download mmarco dataset", type=str, default="../data/mmarco_queries_dset")
+parser.add_argument('--tokenizer_path', help="Path to tokenizer", type=str, default="t5-small")
 parser.add_argument('--n_training_samples', help="Number of training samples to train the model on. For everything type 'all'", type=int, default=500_000)
-parser.add_argument('--dset_path', help="Path of download mmarco dataset", type=str, default="data/mmarco_queries_dset")
 args    =   parser.parse_args()
 
 if "__main__" == __name__:
     output_dir      =   args.out
     dset_path       =   args.dset_path
+    tokenizer_path  =   args.tokenizer_path
     dset            =   load_from_disk(dset_path)
     n_samples       =   len(dset) if args.n_training_samples=='all' else int(args.n_training_samples)
 
@@ -34,7 +36,7 @@ if "__main__" == __name__:
     positive_dset   =   dset.remove_columns("negative").rename_column("positive", "document")
 
     # Tokenize the datasets
-    tokenizer       =   T5Tokenizer.from_pretrained('t5-small')
+    tokenizer       =   T5Tokenizer.from_pretrained(tokenizer_path)
     positive_dset   =   positive_dset.map(tokenize_dset_query_gen, fn_kwargs={"tokenizer": tokenizer})
     positive_dset   =   positive_dset.remove_columns(["query", "document"])
     negative_dset   =   negative_dset.map(tokenize_dset_query_gen, fn_kwargs={"tokenizer": tokenizer})

@@ -18,7 +18,7 @@ from openai.error import InvalidRequestError, Timeout
 
 from src.utils.infer_utils import generate_single_query
 
-def write_to_csv_query_dset_t5(csv_path:str, path_out:str, model:T5ForConditionalGeneration, tokenizer:T5Tokenizer, device, positive_and_negative=False) -> None:
+def write_to_csv_query_dset_t5(csv_path:str, path_out:str, model:T5ForConditionalGeneration, tokenizer:T5Tokenizer, device, positive_and_negative=False, n_queries=3, extractive_sum=False) -> None:
     """Writes the (generated queries, document) pairs into a csv
     Inputs :
         - csv_path : the path of the csv dataset you want to annotate (must contain a column "text")
@@ -29,24 +29,29 @@ def write_to_csv_query_dset_t5(csv_path:str, path_out:str, model:T5ForConditiona
         - positive_and_negative : True if the user wants to generative positive queries as well as hard negative queries for the retriever
     """
 
-    df  =   pd.read_csv(csv_path)   # Load dataset
+    df  =   pd.read_csv(csv_path, sep="\t")   # Load dataset
 
     # Init CSV file
     f       =   open(path_out, 'w')
     writer  =   csv.writer(f, delimiter="\t", lineterminator="\n")
-    writer.writerow(["query"] + ["document"] + ["label"])
+    writer.writerow(["postive"] + ["negative"] + ["document"])
 
     for sample in tqdm(df['text']):
-        doc             =   re.sub("\n", " ", sample)   # Format text
-        pos_gen_queries =   generate_single_query(doc, model, tokenizer, device, positive=True)
-        
-        for q in pos_gen_queries:
-            writer.writerow([q] + [doc] + [1])  # 1 to indicate that the generated query is positive
+        doc             =   re.sub("\n", " ", sample).encode('ascii', 'ignore').decode('ascii')   # Format text
 
-        if positive_and_negative:
-            neg_gen_queries =   generate_single_query(doc, model, tokenizer, device, positive=False)
-            for q in neg_gen_queries:
-                writer.writerow([q] + [doc] + [0])  # 0 to indicate that the generated query is negative
+        ## Generating using a mixture of nucleus sampling and greedy decoding
+        greedy_pos_q    =   generate_single_query(doc, model, tokenizer, device, positive=True, greedy=True, extractive_sum=extractive_sum)
+        pos_gen_queries =   generate_single_query(doc, model, tokenizer, device, positive=True, n_queries=n_queries, extractive_sum=extractive_sum)
+        if not positive_and_negative:
+            writer.writerow([greedy_pos_q[0]] + ["None"] + [doc])
+            for q in pos_gen_queries:
+                writer.writerow([q] + ["None"] + [doc])  # None to indicate we only generate a positive query
+        else:
+            greedy_neg_q    =   generate_single_query(doc, model, tokenizer, device, positive=False, greedy=True, extractive_sum=extractive_sum)
+            neg_gen_queries =   generate_single_query(doc, model, tokenizer, device, positive=False, n_queries=n_queries, extractive_sum=extractive_sum)
+            writer.writerow([greedy_pos_q[0]] + [greedy_neg_q[0]] + [doc])
+            for q_pos, q_neg in zip(pos_gen_queries, neg_gen_queries):
+                writer.writerow([q_pos] + [q_neg] + [doc])
 
 def write_to_csv_query_dset_openai(csv_path:str, path_out:str, llm:OpenAI, prompt_template:PromptTemplate, format_instructions, n_queries=3) -> None:
     """Writes the (generated queries, document) pairs into a csv
