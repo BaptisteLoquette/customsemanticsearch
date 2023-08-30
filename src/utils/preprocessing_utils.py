@@ -5,6 +5,10 @@ Utility functions for Preprocessing
 from typing import Dict
 from torch import Tensor
 import copy
+import nltk
+import random
+from tqdm import tqdm
+from sentence_transformers import InputExample
 from transformers import T5Tokenizer
 
 def clean_and_format(sample:Dict[str, str]) -> Dict[str, str]:
@@ -33,3 +37,38 @@ def tokenize_dset_query_gen(sample:Dict[str, str], tokenizer:T5Tokenizer) -> Dic
     sample['labels']    =   labels
 
     return sample
+
+def preprocess_squad_for_contextual_compression(dset):
+    examples    =   []
+
+    for example in tqdm(dset):
+        context     =   example['context']
+        question    =   example['question']
+        answers     =   example['answers']
+        if len(answers['answer_start']) == 0:   # A certain number of samples do not contain any answer, thus we ignore those
+            continue
+
+        # Retrieve the sentence
+        sentences   =   nltk.sent_tokenize(context)
+        sent_len    =   0
+        prev_len    =   0
+
+        for i_sent in range(len(sentences)):
+            sent_len    +=   len(sentences[i_sent])
+            if sent_len >= answers['answer_start'][0] and prev_len < answers['answer_start'][0]:
+                break
+            prev_len    =   sent_len
+        
+        pos_sent    =   sentences[i_sent]
+
+        # Sample a negative sentence
+        neg_idxs    =   list(range(len(sentences)))
+        neg_idxs.pop(i_sent)
+        examples.append(InputExample(texts=[question, pos_sent], label=1))
+        if len(neg_idxs) > 0:
+            neg_sent    =   sentences[random.choice(neg_idxs)]
+            examples.append(InputExample(texts=[question, neg_sent], label=0))
+        else:   # If the context contains only one sentence (i.e. the positive one) we do not append a negative example
+            continue
+
+    return examples
