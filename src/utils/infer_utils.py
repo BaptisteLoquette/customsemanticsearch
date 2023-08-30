@@ -5,11 +5,11 @@ Inferences utility functions
 from typing import Dict, List
 from torch import Tensor
 import torch
+import nltk
 import numpy as np
 from nltk import sent_tokenize
 from summarizer import Summarizer
 from transformers import T5ForConditionalGeneration, T5Tokenizer
-
 summarize_model =   Summarizer()
 
 def generate_batch_queries(batch:Dict[str, Tensor], model:T5ForConditionalGeneration, tokenizer:T5Tokenizer) -> List[Tensor]:
@@ -87,3 +87,18 @@ def generate_single_query(document:str, model:T5ForConditionalGeneration, tokeni
     gen_queries =   tokenizer.batch_decode(gen_sequences, skip_special_tokens=True, clean_up_tokenization_spaces=True)
 
     return gen_queries
+
+def infer_contextual_compression(query:str, context:str, contextual_model, top_k=3):
+    ## TODO: Use MMR or similar techniques to only output high relevance sentences
+    """Performs inference for contextual compression
+        - query     :   The user's query
+        - context   :   The context/document
+    """
+    sentences   =   nltk.sent_tokenize(context)
+    scores      =   np.zeros(len(sentences))
+    for i_sent, sentence in enumerate(sentences):
+        scores[i_sent]  =   contextual_model.predict([sentence, query])
+    argsort     =   scores.argsort()
+    top_idxs    =   argsort[::-1][:top_k]
+
+    return [sentences[i] for i in top_idxs]
