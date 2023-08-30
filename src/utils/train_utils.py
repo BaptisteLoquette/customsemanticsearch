@@ -4,6 +4,7 @@ Training Utility Functions
 
 from typing import List, Dict
 import re
+import wandb
 import pandas as pd
 from tqdm import tqdm
 from evaluate import load
@@ -57,3 +58,13 @@ def load_triplet_dataset_retriever(csv_path:List[str], test_size=0.2, val_size=0
     train_dataloader    =   datasets.NoDuplicatesDataLoader(train_examples, batch_size=batch_size)
 
     return train_dataloader, test_examples, val_examples
+
+def callback_model(score:float, epoch:int, steps:int) -> None:
+    """Overwrites callback model to report to wandb for sentence_transformers
+        - score : The score from the evaluator
+        - epoch : current epoch
+        - steps : current train steps
+    """
+    wandb.log({"train/epoch" : epoch,
+                "train/steps": steps,
+                "train/score" : score})
